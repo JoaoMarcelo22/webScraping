@@ -1,30 +1,38 @@
 const puppeteer = require('puppeteer');
 const express = require('express');
+const cors = require('cors');
+
 
 const app = express();
 const port = 3050;
+app.use(cors());
 
-app.get('/scrape', async(req, res) => {
-    let elements;
+app.get('/scrape', async (req, res) => {
+    try {
+        const browser = await puppeteer.launch({ headless: false });
+        const page = await browser.newPage();
 
-    try{
-        const browser = await puppeteer.launch({headless:false});
-    const page = await browser.newPage();
-  
-    // Navigate the page to a URL
-    await page.goto('https://www.duolingo.com/profile/JUBILEU.P', {waitUntil: 'networkidle2'});
+        await page.goto('https://www.duolingo.com/profile/JUBILEU.P', { waitUntil: 'networkidle2' });
 
-    await page.waitForSelector('.-TMd4')
+        // Aguarde o seletor ser carregado
+        await page.waitForSelector('.-TMd4');
 
-    const elements = await page.evaluate(() => {
-       return Array.from(document.querySelectorAll('.-TMd4')).map(el => el.innerText);
-    });
-    }catch(error){
-        console.error('Error scraping:', error);
-        return res.status(500).json({ error: 'Failed to scrape the data' });
+        // Extraia os dados
+        const elements = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('.-TMd4')).map(el => el.innerText);
+        });
+
+        await browser.close();
+
+        console.log('Dados extraídos:', elements); // Verifique os dados extraídos
+
+        res.json({ elements }); // Envie os dados extraídos para o cliente
+    } catch (error) {
+        console.error('Erro ao raspar:', error);
+        return res.status(500).json({ error: 'Falha ao raspar os dados' });
     }
-    res.json({ elements });
 });
+
 app.listen(port, () =>{
-    console.log(`Server running at http://localhost:${port}/`);
+    console.log(`Server running at http://localhost:${port}/scrape `);
 });
